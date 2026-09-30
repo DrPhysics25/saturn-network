@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ø SATURN NETWORK</title>
+    <style>
+        body { background: #0d0e15; color: #00ffcc; font-family: monospace; padding: 20px; display: flex; justify-content: center; }
+        .card { background: #161824; border: 2px solid #00ffcc; border-radius: 12px; padding: 20px; width: 100%; max-width: 380px; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
+        h1 { text-align: center; letter-spacing: 2px; text-shadow: 0 0 10px #00ffcc; margin-top: 0; }
+        .balance { font-size: 42px; font-weight: bold; text-align: center; color: #ffffff; margin: 20px 0; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #00ffcc; background: #0d0e15; color: #00ffcc; font-family: monospace; box-sizing: border-box; }
+        button { background: #00ffcc; color: #0d0e15; font-weight: bold; cursor: pointer; }
+        button:hover { background: #00cca3; }
+        .status-msg { font-size: 12px; text-align: center; color: #ff3366; margin-top: 5px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Ø SATURN</h1>
+        
+        <!-- AUTH VIEW (LOGIN / REGISTER) -->
+        <div id="auth-view">
+            <input type="text" id="username" placeholder="Choose Saturn Tag (e.g. achintya)">
+            <input type="password" id="pin" maxlength="4" placeholder="4-Digit Security PIN">
+            <button onclick="authenticate()">ENTER SATURN NETWORK</button>
+            <div style="font-size: 11px; text-align: center; color: #888; margin-top: 8px;">
+                *New Saturn Tags automatically create a new account with a 100 Ø bonus.
+            </div>
+            <div class="status-msg" id="auth-error"></div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboard-view" class="hidden">
+            <div style="text-align:center; font-size: 18px;" id="user-display">@handle</div>
+            <div class="balance" id="balance-display">0 Ø</div>
+            
+            <hr style="border-color:#00ffcc; margin:20px 0;">
+            
+            <input type="text" id="receiver" placeholder="Recipient Tag (e.g. @bro)">
+            <input type="number" id="amount" placeholder="Amount in Ø">
+            <input type="text" id="memo" placeholder="Memo (e.g. Ø take this saturn)">
+            <button onclick="sendTx()">TRANSFER Ø</button>
+            <div class="status-msg" id="tx-status"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        async function authenticate() {
+            const username = document.getElementById('username').value.trim();
+            const pin = document.getElementById('pin').value.trim();
+            const errDiv = document.getElementById('auth-error');
+            errDiv.innerText = "";
+
+            if (!username || pin.length !== 4) {
+                errDiv.innerText = "Please enter a valid Tag and 4-digit PIN.";
+                return;
+            }
+            
+            const res = await fetch('/api/auth', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username, pin })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                currentUser = { tag: data.user.tag, pin: pin, balance: data.user.balance };
+                document.getElementById('auth-view').classList.add('hidden');
+                document.getElementById('dashboard-view').classList.remove('hidden');
+                document.getElementById('user-display').innerText = currentUser.tag;
+                document.getElementById('balance-display').innerText = currentUser.balance + " Ø";
+            } else {
+                errDiv.innerText = data.error || "Authentication failed.";
+            }
+        }
+
+        async function sendTx() {
+            const receiverTag = document.getElementById('receiver').value.trim();
+            const amount = document.getElementById('amount').value.trim();
+            const memo = document.getElementById('memo').value.trim();
+            const statusDiv = document.getElementById('tx-status');
+            statusDiv.innerText = "";
+
+            if (!receiverTag || !amount) {
+                statusDiv.innerText = "Recipient and Amount required!";
+                return;
+            }
+
+            const res = await fetch('/api/transfer', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    senderTag: currentUser.tag,
+                    senderPin: currentUser.pin,
+                    receiverTag, amount, memo
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                statusDiv.style.color = "#00ffcc";
+                statusDiv.innerText = "Transfer Successful!";
+                currentUser.balance = data.newBalance;
+                document.getElementById('balance-display').innerText = currentUser.balance + " Ø";
+                document.getElementById('amount').value = "";
+                document.getElementById('memo').value = "";
+            } else {
+                statusDiv.style.color = "#ff3366";
+                statusDiv.innerText = data.error || "Transfer failed.";
+            }
+        }
+    </script>
+</body>
+</html>
+
+0
+
